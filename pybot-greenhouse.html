@@ -1,0 +1,998 @@
+<title>Pybot's Greenhouse</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Young+Serif&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* Layout: slim header with the level trail, then two columns: lesson notebook | workbench (editor, controls, greenhouse, logbook). Stacks on phones. */
+:root {
+  --bg: #EDF2EC;
+  --panel: #F9FBF6;
+  --ink: #16302A;
+  --muted: #56695F;
+  --line: #D0DBD2;
+  --accent: #E0A021;
+  --accent-ink: #2A1E04;
+  --leaf: #2E8A56;
+  --dry: #B5A24A;
+  --water: #2C78B5;
+  --danger: #B93A26;
+  --soil: #E6DCC8;
+  --soil-2: #DDD1BA;
+  --glass: #B9D2CD;
+  --glass-line: #E9F3F0;
+  --pot: #B8683F;
+  --visor: #16302A;
+  --code-bg: #FBFCF8;
+  --sel: #CFE3D8;
+  --tk-kw: #8A3FA0;
+  --tk-str: #2F7A3A;
+  --tk-num: #B0561A;
+  --tk-com: #8A9A91;
+  --tk-fn: #1F66A3;
+  --ok-bg: #DDF0E2;
+  --bad-bg: #F7E1DC;
+
+  --display: "Young Serif", Georgia, "Times New Roman", serif;
+  --body: "Atkinson Hyperlegible", system-ui, -apple-system, "Segoe UI", sans-serif;
+  --mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, Consolas, monospace;
+  --lh-code: 22px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1916; --panel: #13231F; --ink: #DCE9E2; --muted: #8DA398; --line: #253B34;
+    --accent: #F1B440; --accent-ink: #231802; --leaf: #5BC489; --dry: #A8964A; --water: #62ACE3;
+    --danger: #F07A62; --soil: #2A2922; --soil-2: #31302A; --glass: #2A4744; --glass-line: #3D625E;
+    --pot: #A35F3C; --visor: #0D1916; --code-bg: #0A1512; --sel: #24453A;
+    --tk-kw: #D39BE8; --tk-str: #8FD49A; --tk-num: #F2A56B; --tk-com: #5F766C; --tk-fn: #7FBDF0;
+    --ok-bg: #173A28; --bad-bg: #3E1F19;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1916; --panel: #13231F; --ink: #DCE9E2; --muted: #8DA398; --line: #253B34;
+  --accent: #F1B440; --accent-ink: #231802; --leaf: #5BC489; --dry: #A8964A; --water: #62ACE3;
+  --danger: #F07A62; --soil: #2A2922; --soil-2: #31302A; --glass: #2A4744; --glass-line: #3D625E;
+  --pot: #A35F3C; --visor: #0D1916; --code-bg: #0A1512; --sel: #24453A;
+  --tk-kw: #D39BE8; --tk-str: #8FD49A; --tk-num: #F2A56B; --tk-com: #5F766C; --tk-fn: #7FBDF0;
+  --ok-bg: #173A28; --bad-bg: #3E1F19;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+body { background: var(--bg); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+code { font-family: var(--mono); font-size: .88em; background: color-mix(in srgb, var(--line) 55%, transparent); padding: .08em .35em; border-radius: 4px; }
+
+.shell { max-width: 1320px; margin: 0 auto; padding-inline: 20px; padding-block: 18px 40px; display: grid; gap: 18px; }
+
+/* Header */
+header.top { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 28px; border-bottom: 1px solid var(--line); padding-bottom: 14px; }
+.brand { display: flex; align-items: center; gap: 12px; }
+.brand h1 { font-family: var(--display); font-weight: 400; font-size: 1.75rem; line-height: 1.1; margin: 0; letter-spacing: -.01em; }
+.brand p { margin: 2px 0 0; color: var(--muted); font-size: .92rem; }
+.trail { display: flex; flex-wrap: wrap; gap: 10px 18px; }
+.chapter { display: grid; gap: 4px; }
+.chapter span { font-size: .7rem; text-transform: uppercase; letter-spacing: .09em; color: var(--muted); font-weight: 700; }
+.dots { display: flex; gap: 5px; }
+.dot { width: 30px; height: 30px; border-radius: 50%; border: 1.5px solid var(--line); background: var(--panel); font-family: var(--mono); font-size: .78rem; cursor: pointer; display: grid; place-items: center; font-variant-numeric: tabular-nums; transition: transform .15s; }
+.dot:hover { transform: translateY(-1px); border-color: var(--muted); }
+.dot.done { background: var(--leaf); border-color: var(--leaf); color: var(--panel); }
+.dot.current { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 35%, transparent); }
+
+/* Main grid */
+main { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 22px; align-items: start; }
+@media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
+
+/* Lesson */
+.lesson { display: grid; gap: 16px; min-width: 0; }
+.eyebrow { font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+.lesson h2 { font-family: var(--display); font-weight: 400; font-size: 2rem; line-height: 1.12; margin: 4px 0 0; text-wrap: balance; }
+.learn { max-width: 62ch; }
+.learn p { margin: 0 0 .7em; }
+.learn pre, .answer pre { font-family: var(--mono); font-size: .86rem; line-height: 1.55; background: var(--code-bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; margin: .4em 0 .9em; overflow-x: auto; }
+.goal { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 4px 10px 10px 4px; padding: 14px 16px; }
+.goal h3, .ref h3 { margin: 0 0 4px; font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.goal p { margin: 0; }
+.ref { font-size: .92rem; }
+.ref dl { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 14px; margin: 6px 0 0; }
+.ref dt { font-family: var(--mono); font-size: .84rem; }
+.ref dd { margin: 0; color: var(--muted); }
+.help { display: flex; flex-wrap: wrap; gap: 8px; }
+.hint, .answer { border-top: 1px dashed var(--line); padding-top: 12px; }
+.hint p { margin: 0; }
+
+/* Buttons */
+.btn { border: 1.5px solid var(--line); background: var(--panel); border-radius: 999px; padding: 7px 15px; cursor: pointer; font-size: .92rem; display: inline-flex; align-items: center; gap: 7px; }
+.btn:hover:not(:disabled) { border-color: var(--muted); }
+.btn:disabled { opacity: .5; cursor: default; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 700; padding: 8px 20px; }
+.btn.primary:hover:not(:disabled) { filter: brightness(1.05); border-color: var(--accent); }
+.btn.go { background: var(--leaf); border-color: var(--leaf); color: var(--panel); font-weight: 700; }
+kbd { font-family: var(--mono); font-size: .72rem; border: 1px solid currentColor; border-radius: 4px; padding: 0 4px; opacity: .7; }
+
+/* Workbench */
+.bench { display: grid; gap: 12px; min-width: 0; }
+.editor { display: flex; height: 290px; background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.gutter { flex: none; width: 44px; padding: 12px 8px 12px 0; text-align: right; font-family: var(--mono); font-size: 13px; line-height: var(--lh-code); color: var(--tk-com); overflow: hidden; user-select: none; border-right: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.gutter div.err { color: var(--danger); font-weight: 600; }
+.code-wrap { position: relative; flex: 1; min-width: 0; }
+.code-wrap textarea, .code-wrap pre { position: absolute; inset: 0; margin: 0; padding: 12px 14px; border: 0; font-family: var(--mono); font-size: 14px; line-height: var(--lh-code); white-space: pre; tab-size: 4; letter-spacing: 0; font-variant-ligatures: none; }
+.code-wrap pre { overflow: hidden; pointer-events: none; color: var(--ink); }
+.code-wrap textarea { width: 100%; height: 100%; resize: none; background: transparent; color: transparent; caret-color: var(--ink); overflow: auto; outline: none; }
+.code-wrap textarea::selection { background: var(--sel); color: transparent; }
+.editor:focus-within { border-color: var(--accent); }
+.errband { position: absolute; left: 0; right: 0; height: var(--lh-code); background: color-mix(in srgb, var(--danger) 16%, transparent); }
+.tk-kw { color: var(--tk-kw); } .tk-str { color: var(--tk-str); } .tk-num { color: var(--tk-num); }
+.tk-com { color: var(--tk-com); font-style: italic; } .tk-fn { color: var(--tk-fn); }
+
+.controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 10px; }
+.controls .spacer { flex: 1; }
+.speed { display: inline-flex; align-items: center; gap: 8px; font-size: .85rem; color: var(--muted); }
+.speed input { accent-color: var(--accent); width: 110px; }
+
+.verdict { border-radius: 10px; padding: 12px 14px; border: 1px solid var(--line); background: var(--panel); display: flex; flex-wrap: wrap; align-items: center; gap: 10px 16px; }
+.verdict .msg { flex: 1 1 260px; min-width: 0; }
+.verdict .msg strong { display: block; }
+.verdict pre { font-family: var(--mono); font-size: .82rem; margin: 6px 0 0; white-space: pre-wrap; }
+.verdict.ok { background: var(--ok-bg); border-color: color-mix(in srgb, var(--leaf) 50%, transparent); }
+.verdict.bad { background: var(--bad-bg); border-color: color-mix(in srgb, var(--danger) 45%, transparent); }
+.verdict.idle .msg { color: var(--muted); }
+
+.stage { display: grid; gap: 10px; }
+.house { background: var(--panel); border: 1px solid var(--line); border-radius: 12px; padding: 12px; display: grid; gap: 8px; justify-items: center; }
+.house-bar { width: 100%; display: flex; justify-content: space-between; gap: 10px; font-size: .8rem; color: var(--muted); flex-wrap: wrap; }
+.house-bar b { color: var(--ink); font-weight: 700; }
+canvas { display: block; max-width: 100%; border-radius: 6px; }
+.log { background: var(--code-bg); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.log-head { display: flex; justify-content: space-between; padding: 7px 12px; border-bottom: 1px solid var(--line); font-size: .74rem; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); font-weight: 700; }
+.log pre { margin: 0; padding: 10px 14px; min-height: 64px; max-height: 200px; overflow: auto; font-family: var(--mono); font-size: .86rem; line-height: 1.55; white-space: pre-wrap; word-break: break-word; }
+.log pre .empty { color: var(--tk-com); font-style: italic; }
+
+.finale { text-align: center; padding: 26px 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--panel); }
+.finale h2 { font-family: var(--display); font-weight: 400; font-size: 1.8rem; margin: 0 0 6px; }
+.finale p { margin: 0 auto; max-width: 52ch; color: var(--muted); }
+
+@media (max-width: 560px) {
+  .shell { padding-inline: 16px; }
+  .brand h1 { font-size: 1.45rem; }
+  .lesson h2 { font-size: 1.6rem; }
+  .editor { height: 240px; }
+  .dot { width: 27px; height: 27px; }
+}
+@media (prefers-reduced-motion: reduce) { .dot { transition: none; } }
+</style>
+
+<div class="shell">
+  <header class="top">
+    <div class="brand">
+      <svg width="42" height="42" viewBox="0 0 42 42" aria-hidden="true">
+        <rect x="6" y="9" width="30" height="24" rx="7" fill="var(--accent)" stroke="var(--ink)" stroke-width="2"/>
+        <rect x="21" y="15" width="11" height="8" rx="3" fill="var(--ink)"/>
+        <circle cx="28" cy="19" r="2" fill="var(--accent)"/>
+        <path d="M14 9 C14 3 20 2 21 5 C18 5 16 6 16 9" fill="var(--leaf)"/>
+        <circle cx="13" cy="35" r="3" fill="var(--ink)"/><circle cx="29" cy="35" r="3" fill="var(--ink)"/>
+      </svg>
+      <div>
+        <h1>Pybot's Greenhouse</h1>
+        <p id="progressText">Learn Python by programming a greenhouse robot.</p>
+      </div>
+    </div>
+    <nav class="trail" id="trail" aria-label="Levels"></nav>
+  </header>
+
+  <main>
+    <section class="lesson" id="lesson" aria-live="polite"></section>
+
+    <section class="bench" aria-label="Workbench">
+      <div class="editor">
+        <div class="gutter" id="gutter" aria-hidden="true"></div>
+        <div class="code-wrap">
+          <pre id="hl" aria-hidden="true"></pre>
+          <textarea id="code" spellcheck="false" autocapitalize="off" autocomplete="off" autocorrect="off" wrap="off" aria-label="Python code editor. Tab inserts spaces; press Escape then Tab to leave."></textarea>
+        </div>
+      </div>
+      <div class="controls">
+        <button class="btn primary" id="run" disabled>Loading Python…</button>
+        <button class="btn" id="stop" hidden>Stop</button>
+        <button class="btn" id="reset">Reset code</button>
+        <span class="spacer"></span>
+        <label class="speed" id="speedWrap">Speed <input type="range" id="speed" min="1" max="5" value="3"></label>
+      </div>
+      <div class="verdict idle" id="verdict"><div class="msg">Press Run or <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to try your program.</div></div>
+      <div class="stage">
+        <div class="house" id="house">
+          <div class="house-bar"><span id="houseLabel">Greenhouse</span><span id="houseCount"></span></div>
+          <canvas id="canvas" width="300" height="150" aria-label="Greenhouse grid"></canvas>
+        </div>
+        <div class="log">
+          <div class="log-head"><span>Pybot's logbook</span><span>output</span></div>
+          <pre id="out"><span class="empty">Anything your program prints appears here.</span></pre>
+        </div>
+      </div>
+    </section>
+  </main>
+</div>
+
+<script>
+(() => {
+"use strict";
+
+/* ---------- Levels ---------- */
+const CHAPTERS = ["Booting up", "On the move", "The plant ledger", "Final shift"];
+
+
+const LEVELS = [
+  {
+    ch: 0, title: "Hello, greenhouse", kind: "console",
+    learn: `<p>Pybot, the greenhouse robot, runs on Python. The first thing to learn is <code>print()</code>. It writes a line of text in the logbook.</p>
+<pre>print("Hello")</pre>
+<p>Text in Python is called a <em>string</em>. Strings go inside quotes, either "double" or 'single'.</p>`,
+    goal: `Change the program so Pybot writes <code>Good morning, greenhouse!</code> exactly, including the comma and the exclamation mark.`,
+    starter: `# Pybot's first words\nprint("Hello")\n`,
+    solution: `print("Good morning, greenhouse!")\n`,
+    hint: `Replace <code>Hello</code> with the new sentence, keeping it inside the quotes. Capital G, and don't forget the <code>!</code>.`,
+    expect: ["Good morning, greenhouse!"],
+  },
+  {
+    ch: 0, title: "Name tags", kind: "console",
+    learn: `<p>A <em>variable</em> is a name that holds a value. The <code>=</code> sign stores the value on the right under the name on the left.</p>
+<pre>plant = "fern"\nheight = 30</pre>
+<p>Numbers don't need quotes. <code>30</code> is a number you can do maths with; <code>"30"</code> is text that happens to look like one. <code>print(plant)</code> shows what the variable holds, without the quotes.</p>`,
+    goal: `Make <code>plant</code> hold <code>"basil"</code> and create a variable <code>height</code> holding the number <code>7</code>. Keep the <code>print(plant)</code> line.`,
+    starter: `plant = "fern"\n# create height here\n\nprint(plant)\n`,
+    solution: `plant = "basil"\nheight = 7\n\nprint(plant)\n`,
+    hint: `Two lines: <code>plant = "basil"</code> and <code>height = 7</code>. The 7 has no quotes because it's a number.`,
+    test: [
+      `assert plant == "basil", "plant should hold the text \\"basil\\""`,
+      `assert height == 7, "height should be the number 7, written without quotes"`,
+    ],
+    expect: ["basil"],
+  },
+  {
+    ch: 0, title: "Counting pots", kind: "console",
+    learn: `<p>Python does arithmetic with <code>+</code>, <code>-</code>, <code>*</code> (multiply) and <code>/</code> (divide). Calculations can use variables:</p>
+<pre>rows = 3\nper_row = 5\nprint(rows * per_row)   # 15</pre>
+<p>Anything after a <code>#</code> is a <em>comment</em>. Python ignores it; it's a note for people.</p>`,
+    goal: `The greenhouse has 4 trays with 6 pots each, and 3 pots are cracked. Set <code>good_pots</code> to a calculation using the variables, so the program prints <code>21</code>.`,
+    starter: `trays = 4\npots_per_tray = 6\ncracked = 3\n\ngood_pots = 0   # replace 0 with a calculation\nprint(good_pots)\n`,
+    solution: `trays = 4\npots_per_tray = 6\ncracked = 3\n\ngood_pots = trays * pots_per_tray - cracked\nprint(good_pots)\n`,
+    hint: `Multiply the trays by the pots per tray, then subtract the cracked ones: <code>trays * pots_per_tray - cracked</code>.`,
+    requires: [{ re: /\*/, msg: "Use * to multiply the variables instead of typing the answer in." }],
+    test: [`assert good_pots == 21, "good_pots should work out to 21"`],
+    expect: ["21"],
+  },
+  {
+    ch: 0, title: "Plant labels", kind: "console",
+    learn: `<p>To mix variables into text, put an <code>f</code> before the opening quote and wrap each variable in curly braces:</p>
+<pre>name = "fern"\nprint(f"The {name} needs water")</pre>
+<p>Python fills in the braces when the line runs. Joining text and a number with <code>+</code> causes a TypeError, which is one reason f-strings are handy.</p>`,
+    goal: `Using an f-string and both variables, print <code>mint is 12 cm tall</code>.`,
+    starter: `plant = "mint"\nheight = 12\n\nprint(plant)\n`,
+    solution: `plant = "mint"\nheight = 12\n\nprint(f"{plant} is {height} cm tall")\n`,
+    hint: `<code>print(f"{plant} is {height} cm tall")</code>. The spaces between words matter.`,
+    requires: [{ re: /\bf["']/, msg: "Use an f-string, like f\"{plant} ...\", rather than typing the words out." }],
+    expect: ["mint is 12 cm tall"],
+  },
+  {
+    ch: 1, title: "First steps", kind: "robot",
+    learn: `<p>Now Pybot can move. Each command is a <em>function call</em>: its name followed by <code>()</code>. Python runs lines from top to bottom, one at a time.</p>
+<pre>move()    # one square forward\nwater()   # water the plant underneath</pre>`,
+    goal: `Drive Pybot to the plant and water it.`,
+    starter: `move()\n`,
+    solution: `move()\nmove()\nmove()\nwater()\n`,
+    hint: `Count the squares between Pybot and the plant. You need that many <code>move()</code> lines, then <code>water()</code>.`,
+    grids: [{ rows: ["#######", "#...P.#", "#######"], start: [1, 1, 1] }],
+  },
+  {
+    ch: 1, title: "Turning corners", kind: "robot",
+    learn: `<p><code>turn_left()</code> and <code>turn_right()</code> rotate Pybot a quarter turn on the spot. They don't move it forward. The dark visor shows which way Pybot is facing.</p>`,
+    goal: `Go up the path, round the corner, and water the plant.`,
+    starter: `move()\nmove()\n`,
+    solution: `move()\nmove()\nturn_right()\nmove()\nmove()\nwater()\n`,
+    hint: `After two moves Pybot is at the corner facing up. Which way does it need to turn to face the plant?`,
+    grids: [{ rows: ["#####", "#..P#", "#.###", "#.###", "#####"], start: [1, 3, 0] }],
+  },
+  {
+    ch: 1, title: "The long bench", kind: "robot",
+    learn: `<p>A <code>for</code> loop repeats the indented lines under it. <code>range(5)</code> means five times.</p>
+<pre>for i in range(5):\n    move()\n    water()</pre>
+<p>The colon <code>:</code> starts a block and the 4-space indent marks which lines belong inside it.</p>`,
+    goal: `Water all 9 plants on the bench, using a loop.`,
+    starter: `# Water every plant on the bench\nfor i in range(3):\n    move()\n    water()\n`,
+    solution: `for i in range(9):\n    move()\n    water()\n`,
+    hint: `The loop already moves and waters. It just needs to repeat more times.`,
+    requires: [{ re: /\bfor\b/, msg: "Use a for loop instead of writing out every step." }],
+    grids: [{ rows: ["############", "#.PPPPPPPPP#", "############"], start: [1, 1, 1] }],
+  },
+  {
+    ch: 1, title: "The staircase", kind: "robot",
+    learn: `<p><code>def</code> creates your own command. The indented lines are its <em>body</em>, and they run each time you call it.</p>
+<pre>def turn_around():\n    turn_left()\n    turn_left()\n\nturn_around()</pre>
+<p>Name a function after what it does, then reuse it as often as you like.</p>`,
+    goal: `Finish <code>climb()</code> so one call climbs one step and waters the plant there. Then call it enough times to water all four.`,
+    starter: `def climb():\n    turn_left()\n    move()\n    # finish the step here\n\nclimb()\n`,
+    solution: `def climb():\n    turn_left()\n    move()\n    turn_right()\n    move()\n    water()\n\nfor i in range(4):\n    climb()\n`,
+    hint: `After going up one square, Pybot faces up. Turn right to face along the step, move onto the plant and water it. Then call <code>climb()</code> four times (or use a loop).`,
+    requires: [{ re: /\bdef\s+\w+\s*\(/, msg: "Keep your own function, defined with def." }],
+    grids: [{ rows: ["#######", "#....P#", "#...P.#", "#..P..#", "#.P...#", "#.....#", "#######"], start: [1, 5, 1] }],
+  },
+  {
+    ch: 1, title: "Unknown corridor", kind: "robot",
+    learn: `<p>A <code>while</code> loop repeats as long as its condition is <code>True</code>. <code>front_is_clear()</code> answers <code>True</code> or <code>False</code> depending on what's ahead of Pybot.</p>
+<pre>while front_is_clear():\n    move()</pre>
+<p>Use <code>while</code> when you don't know in advance how many times to repeat.</p>`,
+    goal: `Each greenhouse has a different corridor length. Write one program that reaches the plant at the far end and waters it, in all three greenhouses.`,
+    starter: `# The corridor is a different length each time!\nmove()\nmove()\nwater()\n`,
+    solution: `while front_is_clear():\n    move()\nwater()\n`,
+    hint: `Keep moving while the way ahead is clear. Once the loop ends, Pybot is at the wall, standing on the plant. <code>water()</code> goes after the loop, not indented.`,
+    requires: [{ re: /\bwhile\b/, msg: "Use a while loop with front_is_clear() so it works for any length." }],
+    grids: [
+      { rows: ["#########", "#......P#", "#########"], start: [1, 1, 1] },
+      { rows: ["#####", "#..P#", "#####"], start: [1, 1, 1] },
+      { rows: ["##############", "#...........P#", "##############"], start: [1, 1, 1] },
+    ],
+  },
+  {
+    ch: 1, title: "Gaps in the row", kind: "robot",
+    learn: `<p><code>if</code> runs its block only when the condition is <code>True</code>. <code>on_plant()</code> tells you whether there's a plant under Pybot.</p>
+<pre>if on_plant():\n    water()</pre>
+<p>Watering bare soil makes a muddy mess, and Pybot will stop.</p>`,
+    goal: `Walk the 8 squares of the row and water only where there's a plant. The pattern changes between greenhouses, so check every square.`,
+    starter: `for i in range(8):\n    move()\n    water()\n`,
+    solution: `for i in range(8):\n    move()\n    if on_plant():\n        water()\n`,
+    hint: `Put <code>water()</code> inside an <code>if on_plant():</code> block. It needs one more level of indentation.`,
+    requires: [{ re: /\bif\b/, msg: "Use if on_plant(): to decide when to water." }],
+    grids: [
+      { rows: ["###########", "#.P.PP.P.P#", "###########"], start: [1, 1, 1] },
+      { rows: ["###########", "#..P..PPP.#", "###########"], start: [1, 1, 1] },
+      { rows: ["###########", "#.PP.P..PP#", "###########"], start: [1, 1, 1] },
+    ],
+  },
+  {
+    ch: 2, title: "The seed list", kind: "console",
+    learn: `<p>A <em>list</em> holds several values in order, inside square brackets.</p>
+<pre>trays = ["tomato", "chilli"]\nprint(trays[0])       # tomato (counting starts at 0)\ntrays.append("pea")   # add to the end\nprint(len(trays))     # 3</pre>`,
+    goal: `Add <code>"sage"</code> to the end of <code>plants</code>, so the program prints <code>4</code>.`,
+    starter: `plants = ["fern", "basil", "mint"]\n# add "sage" to the end of the list\n\nprint(len(plants))\n`,
+    solution: `plants = ["fern", "basil", "mint"]\nplants.append("sage")\n\nprint(len(plants))\n`,
+    hint: `<code>plants.append("sage")</code> on the empty line, before the print.`,
+    test: [`assert plants == ["fern", "basil", "mint", "sage"], f"plants should be ['fern', 'basil', 'mint', 'sage'] but it is {plants}"`],
+    expect: ["4"],
+  },
+  {
+    ch: 2, title: "The tall ones", kind: "console",
+    learn: `<p>A <code>for</code> loop can walk through a list, taking each item in turn:</p>
+<pre>for name in ["fern", "mint"]:\n    print(name)</pre>
+<p>Comparisons give <code>True</code> or <code>False</code>: <code>&gt;</code> greater than, <code>&lt;</code> less than, <code>==</code> equal, <code>!=</code> not equal, <code>&gt;=</code> and <code>&lt;=</code>.</p>`,
+    goal: `Print only the heights greater than 15, one per line: <code>31</code>, <code>22</code>, <code>16</code>.`,
+    starter: `heights = [12, 31, 7, 22, 16]\n\nfor h in heights:\n    print(h)\n`,
+    solution: `heights = [12, 31, 7, 22, 16]\n\nfor h in heights:\n    if h > 15:\n        print(h)\n`,
+    hint: `Wrap the print in <code>if h &gt; 15:</code> and indent the print one more level.`,
+    requires: [{ re: /\bif\b/, msg: "Use an if inside the loop so the program works for any list." }],
+    expect: ["31", "22", "16"],
+  },
+  {
+    ch: 2, title: "Watering chart", kind: "console",
+    learn: `<p>A <em>dictionary</em> pairs keys with values, like a lookup table.</p>
+<pre>ages = {"fern": 3, "cactus": 10}\nprint(ages["fern"])   # 3\nages["mint"] = 1      # add a new pair</pre>`,
+    goal: `Add <code>"mint"</code> with the value <code>4</code>. Then print how many litres the fern needs by looking it up in the dictionary.`,
+    starter: `water_needs = {"fern": 3, "cactus": 1, "basil": 2}\n# 1. add mint, which needs 4 litres\n# 2. print how much the fern needs\n\n`,
+    solution: `water_needs = {"fern": 3, "cactus": 1, "basil": 2}\nwater_needs["mint"] = 4\nprint(water_needs["fern"])\n`,
+    hint: `<code>water_needs["mint"] = 4</code> adds the pair. <code>print(water_needs["fern"])</code> looks up the fern.`,
+    requires: [{ re: /water_needs\s*\[\s*["']fern["']\s*\]/, msg: "Look the fern up with water_needs[\"fern\"] instead of printing the number directly." }],
+    test: [`assert water_needs.get("mint") == 4, "water_needs should have \\"mint\\" with the value 4"`],
+    expect: ["3"],
+  },
+  {
+    ch: 2, title: "Water calculator", kind: "console",
+    learn: `<p>Functions can take inputs, called <em>parameters</em>, and send back a result with <code>return</code>.</p>
+<pre>def double(n):\n    return n * 2\n\nprint(double(5))   # 10</pre>
+<p>A function stops as soon as it reaches <code>return</code>.</p>`,
+    goal: `Finish <code>litres(pots, sunny)</code>. Each pot needs 2 litres, or 3 litres when <code>sunny</code> is <code>True</code>. Return the total.`,
+    starter: `def litres(pots, sunny):\n    # 2 litres per pot, or 3 per pot on sunny days\n    return 0\n\nprint(litres(4, False))\nprint(litres(4, True))\n`,
+    solution: `def litres(pots, sunny):\n    if sunny:\n        return pots * 3\n    return pots * 2\n\nprint(litres(4, False))\nprint(litres(4, True))\n`,
+    hint: `Use <code>if sunny:</code> to return <code>pots * 3</code>. Otherwise, return <code>pots * 2</code>.`,
+    test: [
+      `for _a, _b, _want in [(4, False, 8), (4, True, 12), (0, True, 0), (1, False, 2), (5, True, 15)]:`,
+      `    _got = litres(_a, _b)`,
+      `    assert _got == _want, f"litres({_a}, {_b}) should return {_want}, but it returned {_got}"`,
+    ],
+  },
+  {
+    ch: 3, title: "The whole greenhouse", kind: "robot",
+    learn: `<p>Time to put it together: a function for one row, loops to repeat it, and <code>if</code> to skip empty squares. There's more than one right answer.</p>
+<pre>def water_row():\n    ...</pre>`,
+    goal: `Water every plant in the greenhouse. Pybot starts in the top-left corner, facing right. Some squares are bare soil.`,
+    starter: `def water_row():\n    # water one row of 6 squares\n    pass\n\nwater_row()\n`,
+    solution: `def water_row():\n    for i in range(5):\n        if on_plant():\n            water()\n        move()\n    if on_plant():\n        water()\n\nfor i in range(2):\n    water_row()\n    turn_right()\n    move()\n    turn_right()\n    water_row()\n    if i == 0:\n        turn_left()\n        move()\n        turn_left()\n`,
+    hint: `A row is 6 squares: check and water, then move, 5 times, and check the last square once more. At the end of a row going right, turn right, move, turn right. At the end of a row going left, turn left, move, turn left.`,
+    grids: [{ rows: ["########", "#PP.PPP#", "#P.PP.P#", "#.PPP.P#", "#PPP.PP#", "########"], start: [1, 1, 1] }],
+  },
+];
+
+/* ---------- Persistence ---------- */
+const KEY = "pybot-greenhouse-v1";
+let save = { done: {}, code: {}, current: 0 };
+try { const s = JSON.parse(localStorage.getItem(KEY) || "null"); if (s && typeof s === "object") save = Object.assign(save, s); } catch (e) {}
+function persist() { try { localStorage.setItem(KEY, JSON.stringify(save)); } catch (e) {} }
+
+/* ---------- DOM ---------- */
+const $ = id => document.getElementById(id);
+const ta = $("code"), hl = $("hl"), gutter = $("gutter"), out = $("out");
+const runBtn = $("run"), stopBtn = $("stop"), resetBtn = $("reset"), verdict = $("verdict");
+const canvas = $("canvas"), ctx = canvas.getContext("2d");
+let cur = Math.min(Math.max(save.current | 0, 0), LEVELS.length - 1);
+let errLine = null;
+let skReady = false;
+let running = false;
+let animToken = 0;
+
+/* ---------- Syntax highlighting ---------- */
+const KW = new Set("False None True and as assert break class continue def del elif else except finally for from global if import in is lambda nonlocal not or pass raise return try while with yield".split(" "));
+const BI = new Set("print len range str int float list dict input abs min max sum sorted round type bool enumerate move turn_left turn_right water front_is_clear on_plant append".split(" "));
+const esc = s => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+function highlight(src) {
+  const re = /(#[^\n]*)|((?:[rRbBfF]{1,2})?(?:"""[\s\S]*?(?:"""|$)|'''[\s\S]*?(?:'''|$)|"(?:\\.|[^"\\\n])*"?|'(?:\\.|[^'\\\n])*'?))|(\b\d+(?:\.\d+)?\b)|([A-Za-z_]\w*)/g;
+  let html = "", last = 0, m;
+  while ((m = re.exec(src))) {
+    html += esc(src.slice(last, m.index));
+    const t = esc(m[0]);
+    if (m[1]) html += `<span class="tk-com">${t}</span>`;
+    else if (m[2]) html += `<span class="tk-str">${t}</span>`;
+    else if (m[3]) html += `<span class="tk-num">${t}</span>`;
+    else if (KW.has(m[4])) html += `<span class="tk-kw">${t}</span>`;
+    else if (BI.has(m[4])) html += `<span class="tk-fn">${t}</span>`;
+    else html += t;
+    last = re.lastIndex;
+  }
+  return html + esc(src.slice(last));
+}
+function renderEditor() {
+  const src = ta.value;
+  const n = src.split("\n").length;
+  let g = "";
+  for (let i = 1; i <= n; i++) g += `<div${i === errLine ? ' class="err"' : ""}>${i}</div>`;
+  gutter.innerHTML = g;
+  hl.innerHTML = highlight(src) + "\n " +
+    (errLine ? `<div class="errband" style="top:${12 + (errLine - 1) * 22}px"></div>` : "");
+  syncScroll();
+}
+function syncScroll() { hl.scrollTop = ta.scrollTop; hl.scrollLeft = ta.scrollLeft; gutter.scrollTop = ta.scrollTop; }
+ta.addEventListener("scroll", syncScroll);
+ta.addEventListener("input", () => {
+  if (errLine) errLine = null;
+  save.code[cur] = ta.value; persist();
+  renderEditor();
+});
+
+function insertText(text) {
+  ta.focus();
+  if (!document.execCommand || !document.execCommand("insertText", false, text)) {
+    ta.setRangeText(text, ta.selectionStart, ta.selectionEnd, "end");
+    ta.dispatchEvent(new Event("input"));
+  }
+}
+let escPressed = false;
+ta.addEventListener("keydown", e => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "Enter") { e.preventDefault(); runBtn.click(); return; }
+  if (e.key === "Escape") { escPressed = true; return; }
+  if (e.key === "Tab" && !escPressed) {
+    e.preventDefault();
+    const v = ta.value, s = ta.selectionStart;
+    if (e.shiftKey) {
+      const ls = v.lastIndexOf("\n", s - 1) + 1;
+      const lead = v.slice(ls).match(/^ {1,4}/);
+      if (lead) {
+        ta.setSelectionRange(ls, ls + lead[0].length);
+        insertText("");
+      }
+    } else insertText("    ");
+    return;
+  }
+  escPressed = false;
+  if (e.key === "Enter" && !e.shiftKey) {
+    const v = ta.value, s = ta.selectionStart;
+    const ls = v.lastIndexOf("\n", s - 1) + 1;
+    const line = v.slice(ls, s);
+    let ind = line.match(/^\s*/)[0];
+    if (/:\s*(#.*)?$/.test(line)) ind += "    ";
+    e.preventDefault();
+    insertText("\n" + ind);
+  }
+});
+
+/* ---------- Header trail ---------- */
+function renderTrail() {
+  const trail = $("trail");
+  trail.innerHTML = "";
+  CHAPTERS.forEach((name, ci) => {
+    const wrap = document.createElement("div");
+    wrap.className = "chapter";
+    wrap.innerHTML = `<span>${name}</span>`;
+    const dots = document.createElement("div");
+    dots.className = "dots";
+    LEVELS.forEach((lv, i) => {
+      if (lv.ch !== ci) return;
+      const b = document.createElement("button");
+      b.className = "dot" + (save.done[i] ? " done" : "") + (i === cur ? " current" : "");
+      b.textContent = i + 1;
+      b.title = `Level ${i + 1}: ${lv.title}${save.done[i] ? " (complete)" : ""}`;
+      b.setAttribute("aria-label", b.title);
+      if (i === cur) b.setAttribute("aria-current", "step");
+      b.onclick = () => loadLevel(i);
+      dots.appendChild(b);
+    });
+    wrap.appendChild(dots);
+    trail.appendChild(wrap);
+  });
+  const n = Object.keys(save.done).filter(k => save.done[k]).length;
+  $("progressText").textContent = n ? `${n} of ${LEVELS.length} levels complete` : "Learn Python by programming a greenhouse robot.";
+}
+
+/* ---------- Lesson panel ---------- */
+function renderLesson() {
+  const lv = LEVELS[cur];
+  const ref = lv.kind === "robot" ? `
+    <div class="ref"><h3>Pybot's commands</h3><dl>
+      <dt>move()</dt><dd>one square forward</dd>
+      <dt>turn_left()</dt><dd>quarter turn left</dd>
+      <dt>turn_right()</dt><dd>quarter turn right</dd>
+      <dt>water()</dt><dd>water the plant underneath</dd>
+      <dt>front_is_clear()</dt><dd>True if Pybot can move forward</dd>
+      <dt>on_plant()</dt><dd>True if standing on a plant</dd>
+    </dl></div>` : "";
+  $("lesson").innerHTML = `
+    <div>
+      <div class="eyebrow">Level ${cur + 1} of ${LEVELS.length} · ${CHAPTERS[lv.ch]}</div>
+      <h2>${lv.title}</h2>
+    </div>
+    <div class="learn">${lv.learn}</div>
+    <div class="goal"><h3>Your task</h3><p>${lv.goal}</p></div>
+    ${ref}
+    <div class="help">
+      <button class="btn" id="hintBtn">Show a hint</button>
+      <button class="btn" id="ansBtn" hidden>Show the answer</button>
+    </div>
+    <div class="hint" id="hintBox" hidden><p>${lv.hint}</p></div>
+    <div class="answer" id="ansBox" hidden><pre>${esc(lv.solution)}</pre><button class="btn" id="useAns">Put it in the editor</button></div>`;
+  $("hintBtn").onclick = () => { $("hintBox").hidden = false; $("ansBtn").hidden = false; $("hintBtn").hidden = true; };
+  $("ansBtn").onclick = () => { $("ansBox").hidden = false; $("ansBtn").hidden = true; };
+  $("useAns").onclick = () => { ta.value = lv.solution; ta.dispatchEvent(new Event("input")); ta.focus(); };
+}
+
+/* ---------- Greenhouse drawing ---------- */
+let board = null;   // {grid, x, y, a, bump, splash}
+function tok(name) { return getComputedStyle(document.documentElement).getPropertyValue(name).trim(); }
+function newBoard(g) {
+  return { grid: g.rows.map(r => r.split("")), x: g.start[0], y: g.start[1], a: g.start[2], bump: 0, splash: null };
+}
+function cellSize(g) {
+  const cols = g[0].length;
+  const avail = Math.max(200, $("house").clientWidth - 26);
+  return Math.max(22, Math.min(56, Math.floor(avail / cols)));
+}
+function rr(x, y, w, h, r) { ctx.beginPath(); ctx.moveTo(x + r, y); ctx.arcTo(x + w, y, x + w, y + h, r); ctx.arcTo(x + w, y + h, x, y + h, r); ctx.arcTo(x, y + h, x, y, r); ctx.arcTo(x, y, x + w, y, r); ctx.closePath(); }
+function drawPlant(px, py, s, watered) {
+  const c = { pot: tok("--pot"), leaf: watered ? tok("--leaf") : tok("--dry"), ink: tok("--ink"), water: tok("--water") };
+  const cx = px + s / 2;
+  ctx.fillStyle = c.pot;
+  ctx.beginPath();
+  ctx.moveTo(cx - s * .2, py + s * .6); ctx.lineTo(cx + s * .2, py + s * .6);
+  ctx.lineTo(cx + s * .15, py + s * .86); ctx.lineTo(cx - s * .15, py + s * .86); ctx.closePath(); ctx.fill();
+  ctx.strokeStyle = c.leaf; ctx.lineWidth = Math.max(1.5, s * .05); ctx.lineCap = "round";
+  ctx.beginPath(); ctx.moveTo(cx, py + s * .6); ctx.lineTo(cx, py + s * (watered ? .22 : .32)); ctx.stroke();
+  ctx.fillStyle = c.leaf;
+  const top = watered ? .22 : .32;
+  const leaf = (dx, dy, rot) => { ctx.save(); ctx.translate(cx + dx * s, py + dy * s); ctx.rotate(rot); ctx.beginPath(); ctx.ellipse(0, 0, s * .15, s * .07, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore(); };
+  if (watered) { leaf(-.13, top + .14, -.5); leaf(.13, top + .1, .5); leaf(0, top - .02, -Math.PI / 2); }
+  else { leaf(-.12, top + .16, .5); leaf(.12, top + .16, -.5); }
+  if (watered) {
+    ctx.fillStyle = c.water;
+    ctx.beginPath(); const dx = px + s * .8, dy = py + s * .2;
+    ctx.moveTo(dx, dy - s * .09); ctx.quadraticCurveTo(dx + s * .07, dy + s * .02, dx, dy + s * .05); ctx.quadraticCurveTo(dx - s * .07, dy + s * .02, dx, dy - s * .09); ctx.fill();
+  }
+}
+function drawRobot(b, s) {
+  const px = b.x * s, py = b.y * s;
+  const jitter = b.bump ? Math.sin(b.bump * 30) * s * .06 : 0;
+  ctx.save();
+  ctx.translate(px + s / 2 + jitter, py + s / 2);
+  ctx.rotate(b.a * Math.PI / 2);
+  const w = s * .66, h = s * .6;
+  ctx.fillStyle = tok("--visor");
+  rr(-w / 2 - s * .04, -h / 2 + s * .02, s * .1, h - s * .04, s * .03); ctx.fill();
+  rr(w / 2 - s * .06, -h / 2 + s * .02, s * .1, h - s * .04, s * .03); ctx.fill();
+  ctx.fillStyle = tok("--accent"); ctx.strokeStyle = (b.bump || b.crashed) ? tok("--danger") : tok("--visor"); ctx.lineWidth = Math.max(1.5, s * .04);
+  rr(-w / 2, -h / 2, w, h, s * .14); ctx.fill(); ctx.stroke();
+  ctx.fillStyle = tok("--visor");
+  rr(-w * .32, -h / 2 + s * .05, w * .64, h * .3, s * .06); ctx.fill();
+  ctx.fillStyle = tok("--accent");
+  ctx.beginPath(); ctx.arc(0, -h / 2 + s * .05 + h * .15, s * .05, 0, Math.PI * 2); ctx.fill();
+  ctx.restore();
+}
+function draw() {
+  const lv = LEVELS[cur];
+  if (lv.kind !== "robot" || !board) return;
+  const g = board.grid, s = cellSize(g), W = g[0].length * s, H = g.length * s;
+  const dpr = window.devicePixelRatio || 1;
+  if (canvas.width !== W * dpr || canvas.height !== H * dpr) { canvas.width = W * dpr; canvas.height = H * dpr; canvas.style.width = W + "px"; canvas.style.height = H + "px"; }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, W, H);
+  const soil = tok("--soil"), soil2 = tok("--soil-2"), glass = tok("--glass"), gl = tok("--glass-line");
+  for (let y = 0; y < g.length; y++) for (let x = 0; x < g[y].length; x++) {
+    const c = g[y][x], px = x * s, py = y * s;
+    if (c === "#") {
+      ctx.fillStyle = glass; ctx.fillRect(px, py, s, s);
+      ctx.strokeStyle = gl; ctx.lineWidth = 1.2;
+      ctx.beginPath(); ctx.moveTo(px + s * .2, py + s * .8); ctx.lineTo(px + s * .55, py + s * .45); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(px + s * .45, py + s * .85); ctx.lineTo(px + s * .7, py + s * .6); ctx.stroke();
+    } else {
+      ctx.fillStyle = (x + y) % 2 ? soil2 : soil; ctx.fillRect(px, py, s, s);
+      if (c === "P" || c === "W") drawPlant(px, py, s, c === "W");
+      if (c === "M") { ctx.fillStyle = tok("--pot"); ctx.globalAlpha = .45; ctx.beginPath(); ctx.ellipse(px + s / 2, py + s * .7, s * .3, s * .12, 0, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+    }
+  }
+  if (board.splash) {
+    const [sx, sy, t] = board.splash;
+    ctx.strokeStyle = tok("--water"); ctx.lineWidth = 2; ctx.globalAlpha = 1 - t;
+    ctx.beginPath(); ctx.arc(sx * s + s / 2, sy * s + s / 2, s * (.2 + t * .35), 0, Math.PI * 2); ctx.stroke();
+    ctx.globalAlpha = 1;
+  }
+  drawRobot(board, s);
+  const plants = g.flat().filter(c => c === "P" || c === "W").length, wet = g.flat().filter(c => c === "W").length;
+  $("houseCount").innerHTML = `Watered <b>${wet}</b> of <b>${plants}</b>`;
+}
+new ResizeObserver(() => draw()).observe($("house"));
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", draw);
+new MutationObserver(draw).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
+
+/* ---------- Python runner (Skulpt) ---------- */
+let modCounter = 0;
+function robotModule(g) {
+  return `_G = [list(r) for r in ${JSON.stringify(g.rows)}]
+_S = [${g.start[0]}, ${g.start[1]}, ${g.start[2]}]
+_DX = [0, 1, 0, -1]
+_DY = [-1, 0, 1, 0]
+_N = [0]
+
+class CrashError(Exception):
+    pass
+
+class MudError(Exception):
+    pass
+
+class BatteryError(Exception):
+    pass
+
+def _ev(s):
+    print("\\x01" + s)
+
+def _tick():
+    _N[0] += 1
+    if _N[0] > 600:
+        raise BatteryError("Pybot's battery ran out after 600 actions. Does a loop keep going forever?")
+
+def _open(x, y):
+    return 0 <= y < len(_G) and 0 <= x < len(_G[y]) and _G[y][x] != "#"
+
+def move():
+    _tick()
+    nx = _S[0] + _DX[_S[2]]
+    ny = _S[1] + _DY[_S[2]]
+    if not _open(nx, ny):
+        _ev("B")
+        raise CrashError("Pybot bumped into the glass wall. Check which way it was facing before this move().")
+    _S[0] = nx
+    _S[1] = ny
+    _ev("M " + str(nx) + " " + str(ny))
+
+def turn_left():
+    _tick()
+    _S[2] = (_S[2] + 3) % 4
+    _ev("L")
+
+def turn_right():
+    _tick()
+    _S[2] = (_S[2] + 1) % 4
+    _ev("R")
+
+def water():
+    _tick()
+    c = _G[_S[1]][_S[0]]
+    if c != "P" and c != "W":
+        _ev("X " + str(_S[0]) + " " + str(_S[1]))
+        raise MudError("Pybot watered bare soil. There's no plant on this square.")
+    _G[_S[1]][_S[0]] = "W"
+    _ev("W " + str(_S[0]) + " " + str(_S[1]))
+
+def front_is_clear():
+    return _open(_S[0] + _DX[_S[2]], _S[1] + _DY[_S[2]])
+
+def on_plant():
+    c = _G[_S[1]][_S[0]]
+    return c == "P" or c == "W"
+`;
+}
+
+async function execute(code, files, lineOffset) {
+  let text = "";
+  Sk.configure({
+    output: t => { text += t; },
+    read: f => {
+      if (files && files[f] !== undefined) return files[f];
+      if (Sk.builtinFiles && Sk.builtinFiles.files[f] !== undefined) return Sk.builtinFiles.files[f];
+      throw "File not found: '" + f + "'";
+    },
+    inputfun: () => "",
+    inputfunTakesPrompt: true,
+    __future__: Sk.python3,
+    execLimit: 4000,
+    yieldLimit: 100,
+  });
+  let error = null;
+  try {
+    await Sk.misceval.asyncToPromise(() => Sk.importMainWithBody("<stdin>", false, code, true));
+  } catch (e) {
+    error = describeError(e, lineOffset);
+  }
+  return { lines: text.replace(/\n$/, "").split("\n").filter((l, i, a) => !(a.length === 1 && l === "")), error };
+}
+
+function describeError(e, off) {
+  if (!e || !e.tp$name) return { name: "Error", msg: String(e), line: null };
+  const name = e.tp$name;
+  let raw = "";
+  try { raw = e.args && e.args.v && e.args.v.length ? String(Sk.ffi.remapToJs(e.args.v[0])) : ""; } catch (x) { raw = String(e); }
+  let line = null;
+  if (e.traceback) {
+    const t = e.traceback.find(t => String(t.filename).indexOf("stdin") !== -1);
+    if (t && t.lineno) line = t.lineno - off;
+  }
+  if (line !== null && line < 1) line = null;
+  return { name, msg: friendly(name, raw), raw, line };
+}
+
+function friendly(name, raw) {
+  const cmds = ["move", "turn_left", "turn_right", "water", "front_is_clear", "on_plant", "print"];
+  if (name === "NameError") {
+    const m = raw.match(/'(.+?)'/);
+    const n = m ? m[1] : "that name";
+    const close = cmds.find(c => c.toLowerCase() === n.toLowerCase() || c.replace("_", "") === n.toLowerCase());
+    if (close) return `Python doesn't know <code>${esc(n)}</code>. Did you mean <code>${close}</code>? Capitals and underscores matter.`;
+    return `Python doesn't know the name <code>${esc(n)}</code>. Check the spelling, or create it before this line. If it's text, it needs quotes.`;
+  }
+  if (name === "SyntaxError") return `Python couldn't read this line. Look for a missing colon at the end of an <code>if</code>, <code>for</code>, <code>while</code> or <code>def</code> line, or for unmatched quotes or brackets.`;
+  if (name === "IndentationError" || /indent/i.test(raw)) return `The indentation is off. Lines inside a block must all be indented by the same amount (4 spaces), and a line ending in <code>:</code> needs an indented line after it.`;
+  if (name === "TypeError" && /concatenate|str/.test(raw)) return `You can't join text and a number with <code>+</code>. Use an f-string like <code>f"{height} cm"</code>, or convert with <code>str(height)</code>.`;
+  if (name === "TypeError" && /argument/.test(raw)) return `A function got the wrong number of inputs: ${esc(raw)}.`;
+  if (name === "TimeLimitError") return `Your program ran for too long. A <code>while</code> loop probably never stops.`;
+  if (name === "CrashError" || name === "MudError" || name === "BatteryError") return esc(raw);
+  if (name === "IndexError") return `That list position doesn't exist. Remember that counting starts at 0.`;
+  if (name === "KeyError") return `That key isn't in the dictionary: ${esc(raw)}. Check the spelling and quotes.`;
+  return `${esc(name)}: ${esc(raw)}`;
+}
+
+/* ---------- Verdict + output ---------- */
+function setVerdict(kind, html, extra) {
+  verdict.className = "verdict " + kind;
+  verdict.innerHTML = `<div class="msg">${html}</div>`;
+  if (extra) verdict.appendChild(extra);
+}
+function showOutput(lines) {
+  out.innerHTML = lines.length ? esc(lines.join("\n")) : `<span class="empty">Nothing was printed.</span>`;
+}
+function appendOutput(line) {
+  if (out.querySelector(".empty")) out.textContent = "";
+  out.textContent += (out.textContent ? "\n" : "") + line;
+  out.scrollTop = out.scrollHeight;
+}
+function errorVerdict(err) {
+  errLine = err.line;
+  renderEditor();
+  const where = err.line ? ` on line ${err.line}` : "";
+  setVerdict("bad", `<strong>Stopped${where}</strong>${err.msg}`);
+}
+function win() {
+  const first = !save.done[cur];
+  save.done[cur] = true; persist(); renderTrail();
+  const next = cur + 1 < LEVELS.length ? cur + 1 : null;
+  const btn = document.createElement("button");
+  btn.className = "btn go";
+  if (next !== null) { btn.textContent = "Next level →"; btn.onclick = () => loadLevel(next); }
+  else { btn.textContent = "See your greenhouse"; btn.onclick = showFinale; }
+  const all = LEVELS.every((_, i) => save.done[i]);
+  setVerdict("ok", `<strong>Level complete!</strong>${all && first ? "That was the last one. Every level is done." : "Your program did the job."}`, btn);
+  btn.focus({ preventScroll: true });
+}
+function showFinale() {
+  $("lesson").innerHTML = `<div class="finale"><div class="eyebrow">All ${LEVELS.length} levels complete</div><h2>The greenhouse is thriving</h2>
+    <p>You've used print, variables, arithmetic, f-strings, loops, functions, conditions, lists and dictionaries. Those are the building blocks of most Python programs. Pick any level to replay it, or try solving one in fewer lines.</p></div>`;
+}
+
+const stripComments = src => src.split("\n").map(l => l.replace(/#.*$/, "")).join("\n");
+
+/* ---------- Running a level ---------- */
+const SPEEDS = [560, 340, 190, 90, 25];
+const delay = () => SPEEDS[($("speed").value | 0) - 1] || 190;
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+async function run() {
+  if (!skReady || running) return;
+  const lv = LEVELS[cur];
+  const code = ta.value;
+  const token = ++animToken;
+  running = true; runBtn.disabled = true; stopBtn.hidden = lv.kind !== "robot";
+  errLine = null; renderEditor();
+  out.innerHTML = ""; setVerdict("idle", "Running…");
+  try {
+    if (lv.kind === "console") await runConsole(lv, code);
+    else await runRobot(lv, code, token);
+  } finally {
+    if (token === animToken) { running = false; runBtn.disabled = false; stopBtn.hidden = true; }
+  }
+}
+
+async function runConsole(lv, code) {
+  let src = code;
+  if (lv.test) {
+    src += "\n\ntry:\n" + lv.test.map(l => "    " + l).join("\n") +
+      "\nexcept AssertionError as _chk_e:\n    print(\"\\x02\" + str(_chk_e))\nexcept NameError as _chk_e:\n    print(\"\\x02\" + str(_chk_e))\n";
+  }
+  const res = await execute(src, null, 0);
+  const shown = res.lines.filter(l => l[0] !== "\x02");
+  showOutput(shown);
+  if (res.error) return errorVerdict(res.error);
+  const bare = stripComments(code);
+  for (const r of lv.requires || []) if (!r.re.test(bare)) return setVerdict("bad", `<strong>Almost there</strong>${esc(r.msg)}`);
+  const fail = res.lines.find(l => l[0] === "\x02");
+  if (fail) {
+    let m = fail.slice(1);
+    const nm = m.match(/^name '(.+?)' is not defined/);
+    if (nm) m = `There's no variable or function called ${nm[1]} yet.`;
+    return setVerdict("bad", `<strong>Not quite</strong>${esc(m)}`);
+  }
+  if (lv.expect) {
+    const got = shown.map(l => l.replace(/\s+$/, ""));
+    while (got.length && got[got.length - 1] === "") got.pop();
+    const want = lv.expect;
+    if (got.length !== want.length || got.some((l, i) => l !== want[i])) {
+      const pre = document.createElement("pre");
+      pre.textContent = `Expected:\n${want.join("\n")}\n\nYour program printed:\n${got.length ? got.join("\n") : "(nothing)"}`;
+      setVerdict("bad", `<strong>The logbook doesn't match yet</strong>Compare the two carefully. Spelling, spaces and capitals all count.`);
+      verdict.querySelector(".msg").appendChild(pre);
+      return;
+    }
+  }
+  win();
+}
+
+async function runRobot(lv, code, token) {
+  const bare = stripComments(code);
+  const runs = [];
+  for (const g of lv.grids) {
+    const name = "robot_" + (++modCounter);
+    const res = await execute(`from ${name} import *\n` + code, { [`src/lib/${name}.py`]: robotModule(g) }, 1);
+    const b = newBoard(g);
+    const events = res.lines.map(l => {
+      if (l[0] !== "\x01") return { t: "P", text: l };
+      const p = l.slice(1).split(" ");
+      return { t: p[0], x: +p[1], y: +p[2] };
+    });
+    // Replay on a scratch board to find the outcome.
+    const sim = newBoard(g);
+    for (const ev of events) if (ev.t === "W") sim.grid[ev.y][ev.x] = "W";
+    const dry = sim.grid.flat().filter(c => c === "P").length;
+    runs.push({ g, board: b, events, error: res.error, dry });
+    if (res.error || dry) break;
+  }
+  const failed = runs.find(r => r.error || r.dry);
+  for (let i = 0; i < runs.length; i++) {
+    if (token !== animToken) return;
+    const r = runs[i];
+    $("houseLabel").innerHTML = lv.grids.length > 1 ? `Greenhouse <b>${i + 1}</b> of ${lv.grids.length}` : "Greenhouse";
+    board = r.board; draw();
+    if (i > 0) { out.textContent = ""; }
+    await sleep(Math.min(400, delay()));
+    for (const ev of r.events) {
+      if (token !== animToken) return;
+      await playEvent(ev, token);
+    }
+    if (i < runs.length - 1) await sleep(Math.min(600, delay() * 2));
+  }
+  if (token !== animToken) return;
+  if (!out.textContent) out.innerHTML = `<span class="empty">Nothing was printed.</span>`;
+  if (failed && failed.error) return errorVerdict(failed.error);
+  if (failed && failed.dry) {
+    const which = lv.grids.length > 1 ? ` in greenhouse ${runs.indexOf(failed) + 1}` : "";
+    return setVerdict("bad", `<strong>${failed.dry} plant${failed.dry > 1 ? "s are" : " is"} still dry${which}</strong>The program finished without watering every plant. Watch where Pybot stops.`);
+  }
+  for (const r of lv.requires || []) if (!r.re.test(bare)) return setVerdict("bad", `<strong>The plants are watered, but…</strong>${esc(r.msg)}`);
+  win();
+}
+
+function tween(ms, fn) {
+  return new Promise(res => {
+    if (ms < 30 || matchMedia("(prefers-reduced-motion: reduce)").matches) { fn(1); return res(); }
+    const t0 = performance.now();
+    const step = now => {
+      const t = Math.min(1, (now - t0) / ms);
+      fn(t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2);
+      if (t < 1) requestAnimationFrame(step); else res();
+    };
+    requestAnimationFrame(step);
+  });
+}
+
+async function playEvent(ev) {
+  const d = delay();
+  const b = board;
+  if (ev.t === "P") { appendOutput(ev.text); return; }
+  if (ev.t === "M") {
+    const x0 = b.x, y0 = b.y;
+    await tween(d, t => { b.x = x0 + (ev.x - x0) * t; b.y = y0 + (ev.y - y0) * t; draw(); });
+    b.x = ev.x; b.y = ev.y;
+  } else if (ev.t === "L" || ev.t === "R") {
+    const a0 = b.a, a1 = a0 + (ev.t === "L" ? -1 : 1);
+    await tween(d * .8, t => { b.a = a0 + (a1 - a0) * t; draw(); });
+    b.a = a1;
+  } else if (ev.t === "W" || ev.t === "X") {
+    if (ev.t === "W") b.grid[ev.y][ev.x] = "W"; else b.grid[ev.y][ev.x] = "M";
+    await tween(Math.max(d, 120), t => { b.splash = [ev.x, ev.y, t]; draw(); });
+    b.splash = null;
+  } else if (ev.t === "B") {
+    await tween(Math.max(d, 260), t => { b.bump = t < 1 ? t + .01 : 0; draw(); });
+    b.bump = 0; b.crashed = true;
+  }
+  draw();
+}
+
+/* ---------- Level loading ---------- */
+function loadLevel(i) {
+  animToken++; running = false; stopBtn.hidden = true; runBtn.disabled = !skReady;
+  cur = i; save.current = i; persist();
+  const lv = LEVELS[i];
+  ta.value = save.code[i] != null ? save.code[i] : lv.starter;
+  errLine = null;
+  renderEditor(); renderTrail(); renderLesson();
+  out.innerHTML = `<span class="empty">Anything your program prints appears here.</span>`;
+  setVerdict("idle", save.done[i] ? "You've already completed this level. Run it again any time." : `Press Run or <kbd>Ctrl</kbd> + <kbd>Enter</kbd> to try your program.`);
+  const robot = lv.kind === "robot";
+  $("house").hidden = !robot; $("speedWrap").hidden = !robot;
+  if (robot) {
+    $("houseLabel").innerHTML = lv.grids.length > 1 ? `Greenhouse <b>1</b> of ${lv.grids.length}` : "Greenhouse";
+    board = newBoard(lv.grids[0]); draw();
+  } else board = null;
+  resetArmed = false; resetBtn.textContent = "Reset code";
+}
+
+let resetArmed = false, resetTimer = 0;
+resetBtn.onclick = () => {
+  if (!resetArmed) {
+    resetArmed = true; resetBtn.textContent = "Click again to reset";
+    clearTimeout(resetTimer); resetTimer = setTimeout(() => { resetArmed = false; resetBtn.textContent = "Reset code"; }, 3000);
+    return;
+  }
+  resetArmed = false; resetBtn.textContent = "Reset code";
+  ta.value = LEVELS[cur].starter; ta.dispatchEvent(new Event("input"));
+};
+runBtn.onclick = run;
+stopBtn.onclick = () => {
+  animToken++; running = false; runBtn.disabled = false; stopBtn.hidden = true;
+  setVerdict("idle", "Stopped. Press Run to try again.");
+};
+
+loadLevel(cur);
+
+/* ---------- Load Skulpt ---------- */
+function loadScript(src) {
+  return new Promise((res, rej) => { const s = document.createElement("script"); s.src = src; s.onload = res; s.onerror = rej; document.head.appendChild(s); });
+}
+const BASE = "https://cdn.jsdelivr.net/npm/skulpt@1.2.0/dist/";
+loadScript(BASE + "skulpt.min.js")
+  .then(() => loadScript(BASE + "skulpt-stdlib.js"))
+  .then(() => { skReady = true; runBtn.disabled = running; runBtn.innerHTML = `Run <kbd>Ctrl ⏎</kbd>`; })
+  .catch(() => { runBtn.textContent = "Python failed to load"; setVerdict("bad", "<strong>Python couldn't load</strong>Check your connection and reload the page."); });
+})();
+</script>
